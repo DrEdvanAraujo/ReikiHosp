@@ -3,663 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guia Interativo Reiki 3D (Overlay Mãos)</title>
+    <title>Hospital FPS - Basic Integrado</title>
+
     <style>
         body {
             margin: 0;
-            overflow: hidden; /* Prevent scrollbars */
-            background-color: #140a00; /* Match scene background */
-            font-family: sans-serif;
+            overflow: hidden; /* Impede barras de rolagem */
+            font-family: Arial, sans-serif;
+            background-color: #000; /* Fundo preto fora do canvas */
+            color: white;
         }
 
-        #canvas-container {
-            position: relative; /* Container for canvas and overlay */
+        #gameCanvas {
+            display: block; /* Remove espaço extra abaixo do canvas */
             width: 100vw;
             height: 100vh;
         }
 
-        canvas {
-            display: block; /* Remove extra space below canvas */
+        #blocker {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex; /* Centraliza as instruções */
+            justify-content: center; /* Centraliza as instruções */
+            align-items: center; /* Centraliza as instruções */
+            cursor: pointer;
         }
 
-        /* --- UI Elements --- */
-        #info-panel, #chakra-selector, #progress-bar-container, #message-area, #guided-mode-button {
-            position: fixed; /* Use fixed for UI overlays */
-            z-index: 10; /* Above canvas and hand overlay */
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            border-radius: 5px;
-            padding: 10px;
+        #instructions {
+            width: 50%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: rgba(50, 50, 50, 0.8);
+            border-radius: 10px;
+            text-align: center;
+            font-size: 14px;
+            cursor: default;
         }
-
-        #info-panel {
-            top: 10px; right: 10px; width: 300px; max-height: 70vh; overflow-y: auto; font-size: 0.9em;
-        }
-        #chakra-selector {
-            bottom: 10px; left: 10px; padding: 5px;
-        }
-        #chakra-selector button {
-             background-color: grey; color: white; border: 2px solid transparent; margin: 0 2px;
-             padding: 4px 8px; border-radius: 4px; cursor: pointer; min-width: 25px;
-        }
-        #progress-bar-container {
-            bottom: 55px; left: 50%; transform: translateX(-50%); width: 300px; height: 20px; display: none;
-        }
-        #progress-bar {
-            width: 0%; height: 100%; background-color: #4CAF50; border-radius: 5px; transition: width 0.1s linear;
-        }
-         #message-area {
-            top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; border: 1px solid #ccc; text-align: center; display: none; z-index: 20;
-         }
-         #guided-mode-button {
-             bottom: 15px; right: 15px; padding: 10px 15px; cursor: pointer;
-         }
-
-        /* --- Hand Overlay --- */
-        #player-hands-overlay {
-            position: fixed; /* Fixed position on screen */
-            bottom: -20px; /* Adjust vertical position */
-            left: 50%;
-            transform: translateX(-50%); /* Center horizontally */
-            width: 300px; /* Adjust size as needed */
-            max-width: 60%;
-            height: auto;
-            z-index: 5; /* Below UI, above canvas */
-            pointer-events: none; /* IMPORTANT: Allow clicks to pass through */
-            transition: transform 0.2s ease-out; /* Smooth scaling */
-            /* Optional: Add a subtle filter */
-            /* filter: drop-shadow(0px 5px 15px rgba(0,0,0,0.5)); */
-        }
-
-        #player-hands-overlay.applying-reiki {
-             /* Scale down slightly when applying */
-            transform: translateX(-50%) scale(0.95);
-             /* Optional: add brightness or other effect */
-            /* filter: brightness(1.1) drop-shadow(0px 5px 15px rgba(0,0,0,0.5)); */
-        }
-
     </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
-    <div id="canvas-container">
-        <canvas id="main-canvas"></canvas> <!-- Canvas for 3D scene -->
+    <canvas id="gameCanvas"></canvas>
+    <div id="blocker">
+        <div id="instructions">
+            <span style="font-size:36px">Clique para jogar</span>
+            <br /><br />
+            Movimento: WASD<br/>
+            Olhar: Mouse<br/>
+            Correr: Shift
+        </div>
     </div>
-
-    <!-- UI Elements -->
-    <div id="info-panel"></div>
-    <div id="chakra-selector"></div>
-    <div id="progress-bar-container">
-        <div id="progress-bar"></div>
-    </div>
-    <div id="message-area"></div>
-    <button id="guided-mode-button">Sessão Guiada</button>
-
-    <!-- 2D Hand Overlay -->
-    <img id="player-hands-overlay"
-         src="https://i.ibb.co/S43N9jGr/Chat-GPT-Image-8-04-2025-22-04-18.png"
-         alt="Reiki Hands Overlay">
-
-    <!-- Scripts -->
-    <!-- Include Three.js & Tone.js via CDN or local install/import map -->
-    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
-    <script type="importmap">
-    {
-        "imports": {
-        "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
-        "three/examples/jsm/controls/PointerLockControls.js": "https://unpkg.com/three@0.150.1/examples/jsm/controls/PointerLockControls.js",
-        "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.150.1/examples/jsm/loaders/GLTFLoader.js",
-        "tone": "https://unpkg.com/tone@14.7.77/build/Tone.js"
-        }
-    }
-    </script>
 
     <script type="module">
+        // Importa THREE e PointerLockControls do importmap
         import * as THREE from 'three';
-        import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-        // GLTFLoader not needed for hands now, but keep if loading other models
-        // import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-        import * as Tone from 'tone';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-        // --- Get DOM Elements ---
-        const canvas = document.getElementById('main-canvas');
-        const infoPanel = document.getElementById('info-panel');
-        const chakraSelector = document.getElementById('chakra-selector');
-        const progressBarContainer = document.getElementById('progress-bar-container');
-        const progressBar = document.getElementById('progress-bar');
-        const messageArea = document.getElementById('message-area');
-        const guidedModeButton = document.getElementById('guided-mode-button');
-        const handsOverlay = document.getElementById('player-hands-overlay'); // Get the overlay image
+        let scene, camera, renderer, controls;
+        let moveForward = false;
+        let moveBackward = false;
+        let moveLeft = false;
+        let moveRight = false;
+        let sprint = false; // Variável para corrida
+        let canJump = false; // Não implementado ainda
 
-        // --- Constants and State Variables (Mostly same as before) ---
-        const REIKI_CHARGE_DURATION = 30;
-        const MOVE_SPEED = 4.0;
-        const DAMPING = 10.0;
-        const TARGET_COLOR = 0xaaaaaa;
-        const TARGET_OPACITY = 0.5;
-        const HIGHLIGHT_COLOR = 0x00FFFF;
-        const HIGHLIGHT_OPACITY = 0.8;
-        const GUIDED_HIGHLIGHT_COLOR = 0xFFFF00;
-        const GUIDED_HIGHLIGHT_OPACITY = 0.9;
-
-        let scene, camera, renderer, controls, raycaster;
-        let bodyTargets = [];
-        let targetObject = null;
-        let particleSystem = null;
-        let isApplyingReiki = false;
-        let reikiChargeTimer = null;
-        let currentCharge = 0;
-        let selectedChakraIndex = -1;
-        let selectedChakraColor = 0xFFFFFF;
-        let applyingToTarget = null;
-        let audioIsPlaying = false;
-        let backgroundPlayer, cueSynth;
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
-        let guidedModeActive = false;
-        let currentGuidedStep = 0;
-        const guidedPositionsOrder = [ /* Same as before */
-            "HEAD_1", "HEAD_2", "HEAD_3", "HEAD_4", "FRONT_1", "FRONT_2", "FRONT_3", "FRONT_4",
-            "BACK_1", "BACK_2", "BACK_3", "BACK_4", "FEET_1", //"FEET_2" maps to same mesh here
-        ];
-        let guidedHighlightMaterial;
+        const playerHeight = 1.8; // Altura da câmera (jogador)
+        const movementSpeed = 4.0;
+        const sprintMultiplier = 1.8; // Quão mais rápido correr
 
-        // --- Chakra Data & Reiki Position Data (Same as before) ---
-        const chakraColors = [ /* ... Same data ... */
-            { name: 'Base', color: 0xFF0000, hex: '#FF0000' }, { name: 'Sacral', color: 0xFF7F00, hex: '#FF7F00' },
-            { name: 'Solar Plexus', color: 0xFFFF00, hex: '#FFFF00' },{ name: 'Heart', color: 0x00FF00, hex: '#00FF00' },
-            { name: 'Throat', color: 0x0000FF, hex: '#0000FF' }, { name: 'Third Eye', color: 0x4B0082, hex: '#4B0082' },
-            { name: 'Crown', color: 0x9400D3, hex: '#9400D3' }
-        ];
-        const reikiPositions = { /* ... Same comprehensive data ... */
-             "HEAD_1": { id: "HEAD_1", name: "1ª Posição da Cabeça (Rosto)", targetAreaName: "Face Area", physical: "...", glands_endocrine: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 5 },
-             "HEAD_2": { id: "HEAD_2", name: "2ª Posição da Cabeça (Laterais)", targetAreaName: "Head Sides Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 6 },
-             "HEAD_3": { id: "HEAD_3", name: "3ª Posição da Cabeça (Nuca)", targetAreaName: "Nape Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 5 },
-             "HEAD_4": { id: "HEAD_4", name: "4ª Posição da Cabeça (Laterais Pescoço)", targetAreaName: "Neck Sides Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 4 },
-             "FRONT_1": { id: "FRONT_1", name: "1ª Posição da Frente (Tórax Superior)", targetAreaName: "Upper Chest Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 3 },
-             "FRONT_2": { id: "FRONT_2", name: "2ª Posição da Frente (Altura Coração)", targetAreaName: "Heart Level Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 2 },
-             "FRONT_3": { id: "FRONT_3", name: "3ª Posição da Frente (Boca Estômago)", targetAreaName: "Stomach Level Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 1 },
-             "FRONT_4": { id: "FRONT_4", name: "4ª Posição da Frente (Virilha)", targetAreaName: "Groin Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 0 },
-             "BACK_1": { id: "BACK_1", name: "1ª Posição das Costas (Abaixo Pescoço)", targetAreaName: "Upper Back Area", physical: "...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 3 },
-             "BACK_2": { id: "BACK_2", name: "2ª Posição das Costas (Omoplatas)", targetAreaName: "Mid Back Area", physical: "Reflexo FRONT_2", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 2 },
-             "BACK_3": { id: "BACK_3", name: "3ª Posição das Costas (Altura Rins)", targetAreaName: "Kidney Level Area", physical: "Reflexo FRONT_3 + Rins/Supra-renais", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 1 },
-             "BACK_4": { id: "BACK_4", name: "4ª Posição das Costas (Altura Virilha)", targetAreaName: "Lower Back Area", physical: "Reflexo FRONT_4 + Cóccix/Nervos", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 0 },
-             "FEET_1": { id: "FEET_1", name: "1ª Posição dos Pés (Dorso/Planta)", targetAreaName: "Feet Area", physical: "Reflexologia geral...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 0 },
-             "FEET_2": { id: "FEET_2", name: "2ª Posição dos Pés (Ambas Plantas)", targetAreaName: "Feet Soles Area", physical: "Reflexologia total...", emotional: "...", mental: "...", spiritual: "...", chakraIndex: 0 } // Note: May target same mesh as FEET_1
-        };
+        const objects = []; // Para guardar objetos com os quais colidir (paredes, etc.)
 
-
-        // --- Initialization ---
         init();
         animate();
 
         function init() {
-            // Scene, Camera, Renderer, Lighting (Mostly same as before)
+            // --- Cena ---
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x140a00);
-            scene.fog = new THREE.Fog(0x140a00, 8, 25);
+            scene.background = new THREE.Color(0x87ceeb); // Céu azul claro
+            scene.fog = new THREE.Fog(0x87ceeb, 0, 150); // Névoa
 
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 1.6, 2);
+            // --- Câmera ---
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = playerHeight;
 
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            // --- Renderer ---
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
 
-            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.7);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffeedd, 0.6);
-            directionalLight.position.set(8, 15, 10);
-            scene.add(directionalLight);
+            // --- Controles (Pointer Lock) ---
+            controls = new PointerLockControls(camera, renderer.domElement);
 
-            // Controls
-            controls = new PointerLockControls(camera, document.body); // Attach to body to capture clicks anywhere
-            // Event listeners for lock/unlock are added below setupUI
+            const blocker = document.getElementById('blocker');
+            const instructions = document.getElementById('instructions');
 
-            // Raycaster
-            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0.1, 5);
+            instructions.addEventListener('click', function () {
+                controls.lock();
+            }, false); // Add passive false for potential performance improvement? Check browser recommendations.
 
-            // Materials
-             guidedHighlightMaterial = new THREE.MeshLambertMaterial({ /* Same as before */
-                 color: GUIDED_HIGHLIGHT_COLOR, transparent: true, opacity: GUIDED_HIGHLIGHT_OPACITY,
-                 emissive: GUIDED_HIGHLIGHT_COLOR, emissiveIntensity: 0.4
-             });
+            controls.addEventListener('lock', function () {
+                instructions.style.display = 'none';
+                blocker.style.display = 'none';
+            });
 
+            controls.addEventListener('unlock', function () {
+                blocker.style.display = 'flex';
+                instructions.style.display = '';
+            });
 
-            // Create Scene Content
-            createBodyRepresentation(); // Function remains the same conceptually
+            scene.add(controls.getObject());
 
-            // --- NO 3D HAND CREATION HERE ---
+            // --- Event Listeners para Movimento ---
+            const onKeyDown = function (event) {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    case 'ShiftLeft': case 'ShiftRight': sprint = true; break;
+                    // case 'Space': if (canJump === true) velocity.y += 350; canJump = false; break;
+                }
+            };
 
-            // Setup UI & Audio
-            setupUI(); // Remains the same conceptually
-            setupAudio(); // Remains the same conceptually
+            const onKeyUp = function (event) {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                    case 'ShiftLeft': case 'ShiftRight': sprint = false; break;
+                }
+            };
 
-            // Event Listeners
-            window.addEventListener('resize', onWindowResize);
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
 
-             // Pointer lock listeners AFTER UI setup
-             document.addEventListener('click', () => {
-                 // Only lock if not in guided mode end screen or initial message display phase
-                 if (!guidedModeActive && messageArea.style.display === 'none' && !controls.isLocked) {
-                     controls.lock();
-                 } else if (messageArea.style.display !== 'none' && !guidedModeActive) {
-                     // If clicking on initial message, just hide it
-                     messageArea.style.display = 'none';
-                 }
-             });
-             controls.addEventListener('lock', () => {
-                 messageArea.style.display = 'none'; // Hide any messages
-                 document.body.style.cursor = 'none';
-                 handsOverlay.style.display = 'block'; // Show hands when locked
-             });
-             controls.addEventListener('unlock', () => {
-                 document.body.style.cursor = 'auto';
-                 handsOverlay.style.display = 'block'; // Keep hands visible even when unlocked, maybe? Or hide: 'none'
-                  // If cancelling guided mode or finishing, specific messages handle display
-                 if (!guidedModeActive && !isApplyingReiki) { // Show basic instructions if unlocking normally
-                     // infoPanel.innerHTML = "<p>Modo Livre. Clique para travar o cursor.</p>";
-                 }
-             });
+            // --- Luzes ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
 
-            // Initial Message
-            messageArea.innerHTML = `<p>Bem-vindo ao Guia Interativo de Reiki Nível I.</p><p>Clique na tela para iniciar o modo livre (W/A/S/D mover, E aplicar Reiki, 1-7 Chakras).</p><p>Ou use o botão para a Sessão Guiada.</p><p style="color: yellow; font-size: 0.8em;">Disclaimer: Representação visual simbólica...</p>`;
-            messageArea.style.display = 'block';
-            handsOverlay.style.display = 'none'; // Hide hands initially
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 200, 100);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 500;
+            const shadowCamSize = 50;
+             directionalLight.shadow.camera.left = -shadowCamSize;
+             directionalLight.shadow.camera.right = shadowCamSize;
+             directionalLight.shadow.camera.top = shadowCamSize;
+             directionalLight.shadow.camera.bottom = -shadowCamSize;
+            scene.add(directionalLight);
+            // scene.add(new THREE.CameraHelper(directionalLight.shadow.camera)); // Debug
+
+            // --- Chão ---
+            const floorGeometry = new THREE.PlaneGeometry(200, 200);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, side: THREE.DoubleSide });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            objects.push(floor);
+
+            // --- Construir o Hospital (7 salas) ---
+            createHospitalLayout();
+
+            // --- Redimensionamento da Janela ---
+            window.addEventListener('resize', onWindowResize);
         }
 
-        // --- createBodyRepresentation() function is IDENTICAL to the previous version ---
-        // It creates the abstract 3D shapes for Head 1-4, Front 1-4, Back 1-4, Feet
-        function createBodyRepresentation() { /* ... Same code as before ... */
-             const material = new THREE.MeshLambertMaterial({ color: TARGET_COLOR, transparent: true, opacity: TARGET_OPACITY });
-             const bodyGroup = new THREE.Group();
-             // ... (Code to create headGroup, torso, back, feet groups with meshes) ...
-             // Example snippet (repeat for all parts):
-             const faceGeo = new THREE.BoxGeometry(0.3, 0.35, 0.1);
-             const faceMesh = new THREE.Mesh(faceGeo, material.clone());
-             faceMesh.position.set(0, 1.7, -1.3); // Adjust Z based on bodyGroup position
-             faceMesh.userData = { isReikiTarget: true, positionId: "HEAD_1", name: "Face Area" };
-             bodyGroup.add(faceMesh); bodyTargets.push(faceMesh);
-             // ... add ALL other body part meshes ...
-             scene.add(bodyGroup);
-             bodyGroup.position.z = -1.5; // Place in front of camera start
-             console.log("Created Body Representation.");
-         }
+        function createHospitalLayout() {
+            const wallHeight = 4;
+            const wallThickness = 0.5;
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f0f0 });
+            const roomMaterials = [
+                new THREE.MeshStandardMaterial({ color: 0xffaaaa }), // Sala 1
+                new THREE.MeshStandardMaterial({ color: 0xaaffaa }), // Sala 2
+                new THREE.MeshStandardMaterial({ color: 0xaaaaff }), // Sala 3
+                new THREE.MeshStandardMaterial({ color: 0xffffaa }), // Sala 4
+                new THREE.MeshStandardMaterial({ color: 0xffaaff }), // Sala 5
+                new THREE.MeshStandardMaterial({ color: 0xaaffff }), // Sala 6
+                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Sala 7 (Corredor)
+            ];
 
-
-        // --- setupUI() function is IDENTICAL to the previous version ---
-        function setupUI() { /* ... Same code as before ... */
-            // Populate Chakra Selector
-            chakraSelector.innerHTML = ''; // Clear previous
-            const chakraLabel = document.createElement('span'); /* ... etc ... */
-            chakraColors.forEach((chakra, index) => { /* ... create buttons ... */
-                const button = document.createElement('button');
-                button.style.backgroundColor = chakra.hex;
-                button.style.color = (index === 2 || index === 3 || index===0 || index===1) ? '#000' : '#FFF'; // Adjusted contrast check
-                button.style.border = '2px solid transparent';
-                button.style.margin = '0 2px';
-                button.style.padding = '4px 8px';
-                /* ... rest of button styling ... */
-                 button.textContent = `${index + 1}`;
-                 button.title = chakra.name;
-                 button.onclick = () => selectChakra(index);
-                 button.id = `chakra-btn-${index}`;
-                chakraSelector.appendChild(button);
-            });
-            /* ... rest of UI element positioning and styling ... */
-            if (guidedModeButton) {
-                guidedModeButton.onclick = startGuidedMode;
-                /* ... guide button styling ... */
+            function createWall(width, depth, height, x, z, rotationY = 0) {
+                const wallGeometry = new THREE.BoxGeometry(width, height, depth);
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                wall.position.set(x, height / 2, z);
+                wall.rotation.y = rotationY;
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                scene.add(wall);
+                objects.push(wall);
+                return wall;
             }
-        }
 
-        // --- setupAudio() function is IDENTICAL to the previous version ---
-        // REMEMBER TO SET THE CORRECT PATH for audioFilePath
-        function setupAudio() { /* ... Same code as before ... */
-             cueSynth = new Tone.Synth({ volume: -6 }).toDestination();
-             // *** IMPORTANT: Replace with your actual audio file path ***
-             const audioFilePath = "path/to/your/ambient_sound.mp3"; // <<<<<<------ CHANGE THIS
-             backgroundPlayer = new Tone.Player({ url: audioFilePath, loop: true, volume: -18, fadeIn: 0.5, fadeOut: 0.5 }).toDestination();
-             Tone.loaded().then(() => console.log("Tone.js buffer potentially loaded.")).catch(e => console.warn("Audio buffer loading error:", e));
-             window.playStartCue = () => {cueSynth.triggerAttackRelease("C5", "0.1", Tone.now());};
-             window.playEndCue = () => {cueSynth.triggerAttackRelease("G5", "0.1", Tone.now());};
-             window.playBackgroundSound = async () => { /* Same */ };
-             window.stopBackgroundSound = () => { /* Same */ };
-        }
-
-
-        // --- selectChakra() function is IDENTICAL to the previous version ---
-        function selectChakra(index) { /* ... Same code as before ... */
-             if (isApplyingReiki) return;
-             if (index >= 0 && index < chakraColors.length) {
-                 selectedChakraIndex = index;
-                 selectedChakraColor = chakraColors[index].color;
-                 console.log(`Selected Chakra: ${chakraColors[index].name}`);
-                 const buttons = chakraSelector.querySelectorAll('button');
-                 buttons.forEach((btn, i) => {
-                     btn.style.border = i === index ? '2px solid white' : '2px solid transparent';
-                     btn.style.transform = i === index ? 'scale(1.1)' : 'scale(1.0)';
-                 });
-                 updateParticlesColor();
-                 if (targetObject && !isApplyingReiki) { updateInfoPanel(reikiPositions[targetObject.userData.positionId]); }
-             }
-         }
-
-        // --- Reiki Application Logic (Updates for Overlay) ---
-        function startReikiApplication(target) {
-            // ... (Guard clauses same as before) ...
-             if (isApplyingReiki || selectedChakraIndex < 0) return;
-             isApplyingReiki = true;
-             applyingToTarget = target;
-             currentCharge = 0;
-             const positionId = target.userData.positionId;
-             const positionData = reikiPositions[positionId];
-             console.log(`Starting Reiki on: ${positionData.name}...`);
-
-             updateInfoPanel(positionData); // Show applying message
-             progressBar.style.backgroundColor = chakraColors[selectedChakraIndex].hex;
-             progressBar.style.width = '0%';
-             progressBarContainer.style.display = 'block';
-             playBackgroundSound();
-
-             // *** Change: Add class to overlay image ***
-             handsOverlay.classList.add('applying-reiki');
-
-             startParticleEffect(target.getWorldPosition(new THREE.Vector3()), selectedChakraColor); // Use world position of 3D target
-             playStartCue();
-
-             // Timer loop (same as before)
-             let startTime = null;
-             function timerLoop(timestamp) { /* ... Same timer logic using requestAnimationFrame ... */
-                  if (!startTime) startTime = timestamp;
-                  const elapsedSeconds = (timestamp - startTime) / 1000;
-                  currentCharge = elapsedSeconds;
-                  const progress = Math.min((currentCharge / REIKI_CHARGE_DURATION) * 100, 100);
-                  progressBar.style.width = `${progress}%`;
-                  if (currentCharge < REIKI_CHARGE_DURATION && isApplyingReiki) {
-                      reikiChargeTimer = requestAnimationFrame(timerLoop);
-                  } else if (isApplyingReiki) {
-                      completeReikiApplication();
-                  } else {
-                      cancelReikiApplication();
-                  }
-              }
-             reikiChargeTimer = requestAnimationFrame(timerLoop);
-        }
-
-        function completeReikiApplication() {
-             // ... (Timer cancel, console log, sounds same as before) ...
-             if(reikiChargeTimer) cancelAnimationFrame(reikiChargeTimer);
-             reikiChargeTimer = null;
-             console.log("Reiki application complete.");
-             playEndCue();
-             stopBackgroundSound();
-             stopParticleEffect();
-             progressBarContainer.style.display = 'none';
-
-             // *** Change: Remove class from overlay image ***
-             handsOverlay.classList.remove('applying-reiki');
-
-             const positionData = reikiPositions[applyingToTarget.userData.positionId];
-             const chakraName = chakraColors[selectedChakraIndex].name;
-             const benefitText = `Aplicação com energia ${chakraName} (${chakraColors[selectedChakraIndex].hex}) em ${positionData.name}: ${generateBenefitSummary(positionData, selectedChakraIndex)}.`;
-             updateInfoPanel(positionData, benefitText);
-
-             const completedTarget = applyingToTarget;
-             isApplyingReiki = false; // Reset state AFTER updates
-             applyingToTarget = null;
-
-             // Guided Mode Logic (same as before)
-             if (guidedModeActive) { /* ... Same logic to call nextGuidedStep ... */
-                 setTimeout(() => {
-                     if(completedTarget?.userData?.originalMaterial) {
-                         completedTarget.material = completedTarget.userData.originalMaterial;
-                     }
-                    nextGuidedStep();
-                }, 1500);
-             } else {
-                 findTarget(true); // Re-evaluate target in free mode
-             }
-        }
-
-         function cancelReikiApplication() {
-             console.log("Reiki application cancelled.");
-             if(reikiChargeTimer) cancelAnimationFrame(reikiChargeTimer);
-             reikiChargeTimer = null;
-             stopBackgroundSound();
-             stopParticleEffect();
-             progressBarContainer.style.display = 'none';
-             isApplyingReiki = false;
-
-             // *** Change: Remove class from overlay image ***
-             handsOverlay.classList.remove('applying-reiki');
-
-             if (applyingToTarget) {
-                 updateInfoPanel(reikiPositions[applyingToTarget.userData.positionId]);
-                 applyingToTarget = null;
-             }
-             findTarget(true); // Re-evaluate target
-         }
-
-
-        // --- Guided Mode Functions (start, cancel, highlight, next) ---
-        // These functions are IDENTICAL to the previous version conceptually.
-        // They handle the sequence, highlighting 3D targets, updating UI.
-        function startGuidedMode() { /* ... Same ... */
-             if (isApplyingReiki || guidedModeActive) return;
-             console.log("Starting Guided Mode");
-             guidedModeActive = true; currentGuidedStep = 0;
-             if(controls.isLocked) controls.unlock();
-             messageArea.style.display = 'none'; infoPanel.style.display = 'block';
-             guidedModeButton.textContent = "Cancelar Guia"; guidedModeButton.onclick = cancelGuidedMode;
-             highlightGuidedTarget();
-        }
-        function cancelGuidedMode() { /* ... Same ... */
-             if (!guidedModeActive) return; console.log("Cancelling Guided Mode");
-             guidedModeActive = false; if(isApplyingReiki) cancelReikiApplication();
-             bodyTargets.forEach(target => { /* Restore materials */
-                  if (target.userData.originalMaterial) {
-                       target.material = target.userData.originalMaterial; delete target.userData.originalMaterial;
-                       target.material.opacity = TARGET_OPACITY;
-                   }
-              });
-             guidedModeButton.textContent = "Sessão Guiada"; guidedModeButton.onclick = startGuidedMode;
-             infoPanel.innerHTML = "<p>Sessão guiada cancelada. Clique para modo livre.</p>";
-             messageArea.style.display = 'none'; targetObject = null;
-        }
-        function highlightGuidedTarget() { /* ... Same ... */
-             if (!guidedModeActive || currentGuidedStep >= guidedPositionsOrder.length) return;
-             const targetPositionId = guidedPositionsOrder[currentGuidedStep]; let foundTargetMesh = null;
-             bodyTargets.forEach(target => { /* Restore old, find new, apply guided highlight */
-                  if (target.userData.originalMaterial) { target.material = target.userData.originalMaterial; delete target.userData.originalMaterial; target.material.opacity = TARGET_OPACITY; }
-                  if (target.userData.positionId === targetPositionId) {
-                       foundTargetMesh = target; target.userData.originalMaterial = target.material; target.material = guidedHighlightMaterial;
-                   }
-              });
-             if (foundTargetMesh) { /* Update panel with instructions */
-                  const positionData = reikiPositions[targetPositionId];
-                  console.log(`Highlighting Guided Step ${currentGuidedStep + 1}: ${positionData.name}`);
-                  updateInfoPanel(positionData, null, `Passo ${currentGuidedStep + 1}/${guidedPositionsOrder.length}: Olhe para ${positionData.name} (amarelo) e pressione 'E'.`);
-              } else { /* Handle error or skip */ console.warn(`Guided: Mesh not found for ${targetPositionId}`); nextGuidedStep(); }
-        }
-        function nextGuidedStep() { /* ... Same ... */
-             if (!guidedModeActive) return; currentGuidedStep++; console.log("Moving to guided step:", currentGuidedStep);
-             if (currentGuidedStep >= guidedPositionsOrder.length) {
-                  guidedModeActive = false; guidedModeButton.textContent = "Sessão Guiada"; guidedModeButton.onclick = startGuidedMode;
-                  displayFinalMessage();
-              } else { highlightGuidedTarget(); }
-        }
-
-        // --- Targeting Logic (findTarget) ---
-        // IDENTICAL to the previous version. Raycasts from camera center.
-        function findTarget(forceUpdate = false) { /* ... Same code as before ... */
-             if (isApplyingReiki || guidedModeActive) { /* Don't target if busy */
-                  if(targetObject && !guidedModeActive) { targetObject.material.color.setHex(TARGET_COLOR); targetObject.material.opacity = TARGET_OPACITY; targetObject = null; if(!isApplyingReiki) updateInfoPanel(null); }
-                  return;
-              }
-             raycaster.setFromCamera({ x: 0, y: 0 }, camera); const intersects = raycaster.intersectObjects(bodyTargets);
-             let newTargetFound = null;
-             if (intersects.length > 0 && intersects[0].object.userData.isReikiTarget) { newTargetFound = intersects[0].object; }
-             if (newTargetFound !== targetObject || forceUpdate) {
-                  if (targetObject && targetObject !== newTargetFound) { targetObject.material.color.setHex(TARGET_COLOR); targetObject.material.opacity = TARGET_OPACITY; }
-                  targetObject = newTargetFound;
-                  if (targetObject) { targetObject.material.color.setHex(HIGHLIGHT_COLOR); targetObject.material.opacity = HIGHLIGHT_OPACITY; updateInfoPanel(reikiPositions[targetObject.userData.positionId]); }
-                  else { updateInfoPanel(null); }
-              }
-         }
-
-        // --- updateInfoPanel() is IDENTICAL to the previous version ---
-        function updateInfoPanel(positionData, finalBenefit = null, guidedInstruction = null) { /* ... Same detailed logic ... */
-             if (guidedModeActive && guidedInstruction) { /* Show guided instruction */
-                 infoPanel.innerHTML = `<h3>Sessão Guiada</h3><p style="color: yellow;">${guidedInstruction}</p>`;
-                 if (positionData) { infoPanel.innerHTML += `<p style="font-size: 0.9em; opacity: 0.8;"><strong>Alvo:</strong> ${positionData.name}</p>`;}
-             } else if (isApplyingReiki && applyingToTarget) { /* Show applying message */
-                  const currentPositionData = reikiPositions[applyingToTarget.userData.positionId]; infoPanel.innerHTML = `<h3>${currentPositionData.name}</h3><p style="color: ${chakraColors[selectedChakraIndex].hex};">Aplicando Reiki (${chakraColors[selectedChakraIndex].name})...</p><p style="font-size: 0.8em; opacity: 0.7;">${currentPositionData.physical?.substring(0, 50)}...</p>`;
-              } else if (targetObject && positionData) { /* Show details and prompt */
-                   let html = `<h3>${positionData.name}</h3>`;
-                   if (positionData.physical) html += `<p><strong>Físico:</strong> ${positionData.physical}</p>`;
-                   if (positionData.glands_endocrine) html += `<p><strong>Glândulas/Endócrino:</strong> ${positionData.glands_endocrine}</p>`;
-                   if (positionData.emotional) html += `<p><strong>Emocional:</strong> ${positionData.emotional}</p>`;
-                   if (positionData.mental) html += `<p><strong>Mental:</strong> ${positionData.mental}</p>`;
-                   if (positionData.spiritual) html += `<p><strong>Espiritual:</strong> ${positionData.spiritual}</p>`;
-                   if (finalBenefit) { html += `<p style="color: lightgreen; margin-top: 15px; border-top: 1px solid #555; padding-top: 10px;"><strong>Resultado Simulado:</strong> ${finalBenefit}</p>`; }
-                   else if (selectedChakraIndex === -1) { html += `<p style="color: orange; margin-top: 10px;">Selecione Chakra (1-7) e pressione 'E'.</p>`; }
-                   else { html += `<p style="color: ${chakraColors[selectedChakraIndex].hex}; margin-top: 10px;">Pressione 'E' para aplicar (${chakraColors[selectedChakraIndex].name}).</p>`; }
-                   infoPanel.innerHTML = html;
-               } else { /* Default free mode prompt */ infoPanel.innerHTML = "<p>Mire nas áreas do corpo (ciano). Use 1-7 para Chakra.</p>"; }
-         }
-
-        // --- Particle Effects (start, update, stop, updateColor) ---
-        // Logic is mostly the same, but origin needs careful consideration.
-        // We'll start particles near the camera, moving towards the target.
-        function startParticleEffect(worldPosition, colorHex) {
-            stopParticleEffect();
-            const particleCount = 150;
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(particleCount * 3);
-            const velocities = [];
-            const targetPos = worldPosition;
-
-            // Start particles near the camera's forward direction
-            const startOrigin = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.3)); // Point slightly in front of camera
-
-            for (let i = 0; i < particleCount; i++) {
-                const startPos = startOrigin.clone().add(new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.2, // Spread them out a bit
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2
-                ));
-                positions[i * 3] = startPos.x;
-                positions[i * 3 + 1] = startPos.y;
-                positions[i * 3 + 2] = startPos.z;
-
-                const velocity = targetPos.clone().sub(startPos).normalize()
-                    .multiplyScalar(Math.random() * 0.02 + 0.015) // Speed towards target
-                    .add(new THREE.Vector3( // Slight drift
-                       (Math.random() - 0.5) * 0.003, (Math.random() - 0.5) * 0.003, (Math.random() - 0.5) * 0.003
-                    ));
-                velocities.push(velocity);
+            function createRoomFloor(width, depth, x, z, material) {
+                const floorGeom = new THREE.PlaneGeometry(width, depth);
+                const roomFloor = new THREE.Mesh(floorGeom, material);
+                roomFloor.rotation.x = -Math.PI / 2;
+                roomFloor.position.set(x, 0.01, z);
+                roomFloor.receiveShadow = true;
+                scene.add(roomFloor);
             }
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.userData.velocities = velocities;
-            const material = new THREE.PointsMaterial({ /* Same as before */
-                 color: colorHex, size: 0.04, transparent: true, opacity: 0.7,
-                 blending: THREE.AdditiveBlending, sizeAttenuation: true, depthWrite: false
-             });
-            particleSystem = new THREE.Points(geometry, material);
-            scene.add(particleSystem);
+
+            const roomSize = 10;
+            const corridorWidth = 4;
+            const corridorLength = roomSize * 3 + wallThickness * 2;
+            const doorWidth = 1.5;
+            const wallSegmentWidth = (roomSize - doorWidth) / 2;
+
+             // --- Corredor Central (Sala 7) ---
+            createRoomFloor(corridorWidth, corridorLength, 0, 0, roomMaterials[6]);
+            createWall(wallThickness, corridorLength, wallHeight, -corridorWidth / 2 - wallThickness / 2, 0); // Esquerda
+            createWall(wallThickness, corridorLength, wallHeight, corridorWidth / 2 + wallThickness / 2, 0); // Direita
+             // Parede Fundo (com abertura)
+            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, -(corridorWidth / 4 + doorWidth / 4), -corridorLength / 2 - wallThickness / 2); // Frente Esq
+            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, (corridorWidth / 4 + doorWidth / 4), -corridorLength / 2 - wallThickness / 2); // Frente Dir
+             // Parede Frente (com abertura)
+            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, -(corridorWidth / 4 + doorWidth / 4), corridorLength / 2 + wallThickness / 2); // Fundo Esq
+            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, (corridorWidth / 4 + doorWidth / 4), corridorLength / 2 + wallThickness / 2); // Fundo Dir
+
+
+            // --- Salas Laterais e Fundo ---
+            for (let i = 0; i < 3; i++) { // Salas 1, 2, 3 (Esquerda) e 4, 5, 6 (Direita)
+                const roomZ = -corridorLength / 2 + roomSize / 2 + i * (roomSize + wallThickness);
+                const roomX_Left = -corridorWidth / 2 - wallThickness - roomSize / 2;
+                const roomX_Right = corridorWidth / 2 + wallThickness + roomSize / 2;
+
+                // --- Salas à Esquerda (1, 2, 3) ---
+                createRoomFloor(roomSize, roomSize, roomX_Left, roomZ, roomMaterials[i]);
+                createWall(wallThickness, roomSize, wallHeight, roomX_Left - roomSize/2 - wallThickness/2, roomZ); // Externa
+                 // Paredes Frontal/Traseira da Sala
+                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Left, roomZ - roomSize / 2 - wallThickness / 2); // Frente (para corredor)
+                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Left, roomZ + roomSize / 2 + wallThickness / 2); // Fundo
+
+                 // Paredes da porta (na parede do corredor)
+                createWall(wallThickness, wallSegmentWidth, wallHeight, -corridorWidth / 2 - wallThickness / 2, roomZ - (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 1
+                createWall(wallThickness, wallSegmentWidth, wallHeight, -corridorWidth / 2 - wallThickness / 2, roomZ + (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 2
+
+                // --- Salas à Direita (4, 5, 6) ---
+                createRoomFloor(roomSize, roomSize, roomX_Right, roomZ, roomMaterials[i + 3]);
+                createWall(wallThickness, roomSize, wallHeight, roomX_Right + roomSize/2 + wallThickness/2, roomZ); // Externa
+                 // Paredes Frontal/Traseira da Sala
+                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Right, roomZ - roomSize / 2 - wallThickness / 2); // Frente (para corredor)
+                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Right, roomZ + roomSize / 2 + wallThickness / 2); // Fundo
+
+                // Paredes da porta (na parede do corredor)
+                createWall(wallThickness, wallSegmentWidth, wallHeight, corridorWidth / 2 + wallThickness / 2, roomZ - (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 1
+                createWall(wallThickness, wallSegmentWidth, wallHeight, corridorWidth / 2 + wallThickness / 2, roomZ + (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 2
+
+                 // Paredes divisórias entre salas (exceto a primeira de cada lado)
+                 if (i > 0) {
+                    const prevRoomZ = -corridorLength / 2 + roomSize / 2 + (i-1) * (roomSize + wallThickness);
+                    const dividerZ = roomZ - roomSize/2 - wallThickness/2; // Posição Z da parede divisória
+                    createWall(roomSize, wallThickness, wallHeight, roomX_Left, dividerZ); // Divisória esquerda
+                    createWall(roomSize, wallThickness, wallHeight, roomX_Right, dividerZ); // Divisória direita
+                 }
+            }
+
+             // --- Sala do Fundo (Sala 4 redefinida aqui como exemplo, ID 3 no array material[3]) ---
+            // Esta sala fica no final do eixo Z positivo do corredor
+            const room4_Z = corridorLength/2 + wallThickness + roomSize/2;
+            createRoomFloor(roomSize, roomSize, 0, room4_Z, roomMaterials[3]); // Usando material[3] (amarelo)
+            // Parede externa (fundo)
+            createWall(roomSize + wallThickness*2, wallThickness, wallHeight, 0, room4_Z + roomSize/2 + wallThickness/2);
+            // Paredes laterais
+            createWall(wallThickness, roomSize + wallThickness, wallHeight, -roomSize/2 - wallThickness/2, room4_Z); // Ajustado depth
+            createWall(wallThickness, roomSize + wallThickness, wallHeight, roomSize/2 + wallThickness/2, room4_Z); // Ajustado depth
+             // Paredes da porta (conectando ao corredor) - já feitas acima
+
+            // --- Teto ---
+            const ceilingGeometry = new THREE.PlaneGeometry(corridorWidth + 2*roomSize + 4*wallThickness, corridorLength + roomSize + 2*wallThickness);
+            const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, side: THREE.DoubleSide });
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.position.y = wallHeight;
+            ceiling.rotation.x = Math.PI / 2;
+            scene.add(ceiling);
+
+            // Adicionar objetos simples
+            const boxGeometry = new THREE.BoxGeometry(1, 0.5, 2);
+            const boxMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+            const bed1 = new THREE.Mesh(boxGeometry, boxMaterial);
+            bed1.position.set(-corridorWidth / 2 - wallThickness - roomSize / 2, 0.25, -corridorLength / 2 + roomSize / 2); // Sala 1
+            bed1.castShadow = true; bed1.receiveShadow = true;
+            scene.add(bed1); objects.push(bed1);
+
+            const bed2 = new THREE.Mesh(boxGeometry, boxMaterial);
+            bed2.position.set(corridorWidth / 2 + wallThickness + roomSize / 2, 0.25, -corridorLength / 2 + roomSize / 2); // Sala 4 (direita)
+            bed2.castShadow = true; bed2.receiveShadow = true;
+            scene.add(bed2); objects.push(bed2);
         }
 
-        function updateParticleEffect() {
-            if (particleSystem && isApplyingReiki && applyingToTarget) {
-                const positions = particleSystem.geometry.attributes.position;
-                const velocities = particleSystem.geometry.userData.velocities;
-                const targetPos = applyingToTarget.getWorldPosition(new THREE.Vector3());
-                const startOrigin = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.3));
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-                for (let i = 0; i < positions.count; i++) {
-                    positions.array[i * 3] += velocities[i].x;
-                    positions.array[i * 3 + 1] += velocities[i].y;
-                    positions.array[i * 3 + 2] += velocities[i].z;
+        let prevTime = performance.now();
 
-                    const currentPos = new THREE.Vector3(positions.array[i*3], positions.array[i*3+1], positions.array[i*3+2]);
-                    // Reset if too far from target OR behind origin
-                    if (currentPos.distanceTo(targetPos) > 1.2 || currentPos.distanceTo(startOrigin) > 2.0) {
-                         const startPos = startOrigin.clone().add(new THREE.Vector3(
-                             (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2
-                         ));
-                        positions.array[i * 3] = startPos.x; positions.array[i * 3 + 1] = startPos.y; positions.array[i * 3 + 2] = startPos.z;
-                        velocities[i] = targetPos.clone().sub(startPos).normalize()
-                             .multiplyScalar(Math.random() * 0.02 + 0.015)
-                             .add(new THREE.Vector3( (Math.random() - 0.5) * 0.003, (Math.random() - 0.5) * 0.003, (Math.random() - 0.5) * 0.003 ));
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+
+            if (controls.isLocked === true) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                // velocity.y -= 9.8 * 100.0 * delta; // Gravidade
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                const currentSpeed = sprint ? movementSpeed * sprintMultiplier : movementSpeed;
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta * 10;
+                if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta * 10;
+
+                // --- Salvar posição anterior para possível reversão em colisão ---
+                const oldPosition = controls.getObject().position.clone();
+
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+                // controls.getObject().position.y += (velocity.y * delta);
+
+                // --- Detecção de Colisão MUITO Básica (Exemplo - pode precisar de ajustes) ---
+                const playerBox = new THREE.Box3().setFromCenterAndSize(
+                    controls.getObject().position,
+                    new THREE.Vector3(0.5, playerHeight, 0.5) // Caixa delimitadora do jogador (ajustar tamanho)
+                );
+
+                let collision = false;
+                for (let i = 0; i < objects.length; i++) {
+                    if (objects[i] !== floor && objects[i].geometry) { // Ignora o chão principal
+                         // É mais seguro usar uma BoundingBox do objeto, se disponível
+                         // Aqui estamos criando uma na hora, o que pode ser ineficiente
+                         const objBox = new THREE.Box3().setFromObject(objects[i]);
+                        if (playerBox.intersectsBox(objBox)) {
+                            collision = true;
+                            break; // Sai do loop se colidiu com um objeto
+                        }
                     }
                 }
-                positions.needsUpdate = true;
+
+                if (collision) {
+                    // Se houve colisão, reverte para a posição anterior
+                    controls.getObject().position.copy(oldPosition);
+                     // Zera velocidade para evitar ficar "preso"
+                     velocity.x = 0;
+                     velocity.z = 0;
+                } else {
+                     // Se não colidiu, apenas garante que o jogador não afunde/flutue
+                     controls.getObject().position.y = playerHeight;
+                }
+
+
+                // if (controls.getObject().position.y < playerHeight) { // Simples "colisão" com chão
+                //     velocity.y = 0;
+                //     controls.getObject().position.y = playerHeight;
+                //     canJump = true; // Pode pular se estiver no chão
+                // }
             }
+
+            prevTime = time;
+            renderer.render(scene, camera);
         }
-        function stopParticleEffect() { /* Identical */ if (particleSystem) { scene.remove(particleSystem); particleSystem.geometry.dispose(); particleSystem.material.dispose(); particleSystem = null; } }
-        function updateParticlesColor() { /* Identical */ if (particleSystem && selectedChakraIndex !== -1) { particleSystem.material.color.setHex(chakraColors[selectedChakraIndex].color); } }
-
-
-        // --- Final Message & Redirect ---
-        // IDENTICAL to previous version
-        function displayFinalMessage() { /* ... Same code ... */
-             if (controls.isLocked) controls.unlock(); guidedModeActive = false;
-             infoPanel.style.display = 'none'; chakraSelector.style.display = 'none'; progressBarContainer.style.display = 'none'; if(guidedModeButton) guidedModeButton.style.display = 'none';
-             messageArea.innerHTML = `<h2>Sessão Concluída!</h2><p>Você completou a exploração guiada.</p><p>Lembre-se, a prática leva à maestria.</p><hr><p>Ver exemplo visual de autoaplicação?</p><button id="redirectButton" style="padding: 10px 20px; margin-top: 15px; cursor: pointer;">Sim, Ver Autoaplicação</button>`;
-             messageArea.style.display = 'block';
-             document.getElementById('redirectButton').onclick = () => { window.location.href = 'https://edaraujofilho.criadorlw.com.br/aula8pics'; };
-        }
-
-        // --- Animation Loop (Identical) ---
-        function animate() { /* ... Same code using requestAnimationFrame, delta, movement, targeting checks, particle updates ... */
-             requestAnimationFrame(animate);
-             const delta = 0.0166; // ~60fps
-
-             if (controls.isLocked) { // Movement
-                 velocity.x -= velocity.x * DAMPING * delta; velocity.z -= velocity.z * DAMPING * delta;
-                 direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft); direction.normalize();
-                 if (moveForward || moveBackward) velocity.z -= direction.z * MOVE_SPEED * delta * 100;
-                 if (moveLeft || moveRight) velocity.x -= direction.x * MOVE_SPEED * delta * 100;
-                 controls.moveRight(-velocity.x * delta); controls.moveForward(-velocity.z * delta);
-             }
-
-             if (controls.isLocked && !guidedModeActive && !isApplyingReiki) { findTarget(); } // Targeting
-
-             if (isApplyingReiki) { updateParticleEffect(); } // Effects
-
-             renderer.render(scene, camera);
-         }
-
-        // --- Event Handlers (onWindowResize, onKeyDown, onKeyUp) ---
-        // IDENTICAL to previous version (including Escape key logic)
-         function onWindowResize() { /* ... Same ... */ camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-         function onKeyDown(event) { /* ... Same logic for W/A/S/D, E, 1-7, Escape based on guidedModeActive/isApplyingReiki ... */
-             if (guidedModeActive && !isApplyingReiki) { // Guided interaction
-                 if (event.code === 'KeyE') { const ht = bodyTargets.find(t=>t.material===guidedHighlightMaterial); if (ht && selectedChakraIndex !== -1) startReikiApplication(ht); else if (selectedChakraIndex===-1) flashChakraSelector(); }
-                 switch (event.code) { /* Chakra selection */ case 'Digit1': selectChakra(0); break; /*...*/ case 'Digit7': selectChakra(6); break; } return;
-             } // Free mode / Applying
-             switch (event.code) {
-                 case 'KeyW': moveForward=true; break; case 'KeyA': moveLeft=true; break; case 'KeyS': moveBackward=true; break; case 'KeyD': moveRight=true; break;
-                 case 'KeyE': if(targetObject && !isApplyingReiki && selectedChakraIndex!==-1 && controls.isLocked) startReikiApplication(targetObject); else if(selectedChakraIndex===-1 && controls.isLocked) flashChakraSelector(); break;
-                 /* Chakra selection */ case 'Digit1': selectChakra(0); break; /*...*/ case 'Digit7': selectChakra(6); break;
-                 case 'Escape': if (isApplyingReiki) cancelReikiApplication(); else if (guidedModeActive) cancelGuidedMode(); break;
-             }
-         }
-         function onKeyUp(event) { /* ... Same W/A/S/D flags = false ... */ switch (event.code) { case 'KeyW': moveForward=false; break; case 'KeyA': moveLeft=false; break; case 'KeyS': moveBackward=false; break; case 'KeyD': moveRight=false; break; } }
-
-
-        // --- Helper Functions (flashChakraSelector, generateBenefitSummary) ---
-        // IDENTICAL to previous version
-        function flashChakraSelector() { /* ... Same UI flash logic ... */
-             chakraSelector.style.transition = 'background-color 0.1s ease-in-out'; let f=0; const i=setInterval(()=>{chakraSelector.style.backgroundColor=f%2===0?'rgba(255,255,0,0.5)':'rgba(0,0,0,0.7)'; f++; if(f>3){clearInterval(i); chakraSelector.style.backgroundColor='rgba(0,0,0,0.7)'; chakraSelector.style.transition='';}}, 150);
-         }
-        function generateBenefitSummary(positionData, chakraIndex) { /* ... Same basic theme mapping ... */
-             const themes = ["Estabilidade...", "Emoções...", "Poder Pessoal...", "Amor...", "Comunicação...", "Intuição...", "Conexão..."]; return themes[chakraIndex] || "Equilíbrio";
-         }
-
     </script>
 
 </body>
