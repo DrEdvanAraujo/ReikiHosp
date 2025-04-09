@@ -3,389 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hospital FPS - Basic Integrado</title>
+    <title>Guia Interativo Reiki 3D (Overlay Mãos)</title>
 
     <style>
         body {
             margin: 0;
-            overflow: hidden; /* Impede barras de rolagem */
-            font-family: Arial, sans-serif;
-            background-color: #000; /* Fundo preto fora do canvas */
-            color: white;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #140a00; /* Match scene background */
+            font-family: sans-serif;
+
         }
 
-        #gameCanvas {
-            display: block; /* Remove espaço extra abaixo do canvas */
+        #canvas-container {
+            position: relative; /* Container for canvas and overlay */
             width: 100vw;
             height: 100vh;
         }
 
-        #blocker {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            display: flex; /* Centraliza as instruções */
-            justify-content: center; /* Centraliza as instruções */
-            align-items: center; /* Centraliza as instruções */
-            cursor: pointer;
+        canvas {
+            display: block; /* Remove extra space below canvas */
         }
 
-        #instructions {
-            width: 50%;
-            max-width: 400px;
-            padding: 20px;
-            background-color: rgba(50, 50, 50, 0.8);
-            border-radius: 10px;
-            text-align: center;
-            font-size: 14px;
-            cursor: default;
+        /* --- UI Elements --- */
+        #info-panel, #chakra-selector, #progress-bar-container, #message-area, #guided-mode-button {
+            position: fixed; /* Use fixed for UI overlays */
+            z-index: 10; /* Above canvas and hand overlay */
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            padding: 10px;
         }
+
+        #info-panel {
+            top: 10px; right: 10px; width: 300px; max-height: 70vh; overflow-y: auto; font-size: 0.9em;
+        }
+        #chakra-selector {
+            bottom: 10px; left: 10px; padding: 5px;
+        }
+        #chakra-selector button {
+             background-color: grey; color: white; border: 2px solid transparent; margin: 0 2px;
+             padding: 4px 8px; border-radius: 4px; cursor: pointer; min-width: 25px;
+        }
+        #progress-bar-container {
+            bottom: 55px; left: 50%; transform: translateX(-50%); width: 300px; height: 20px; display: none;
+        }
+        #progress-bar {
+            width: 0%; height: 100%; background-color: #4CAF50; border-radius: 5px; transition: width 0.1s linear;
+        }
+         #message-area {
+            top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px; border: 1px solid #ccc; text-align: center; display: none; z-index: 20;
+         }
+         #guided-mode-button {
+             bottom: 15px; right: 15px; padding: 10px 15px; cursor: pointer;
+         }
+
+        /* --- Hand Overlay --- */
+        #player-hands-overlay {
+            position: fixed; /* Fixed position on screen */
+            bottom: -20px; /* Adjust vertical position */
+            left: 50%;
+            transform: translateX(-50%); /* Center horizontally */
+            width: 300px; /* Adjust size as needed */
+            max-width: 60%;
+            height: auto;
+            z-index: 5; /* Below UI, above canvas */
+            pointer-events: none; /* IMPORTANT: Allow clicks to pass through */
+            transition: transform 0.2s ease-out; /* Smooth scaling */
+            /* Optional: Add a subtle filter */
+            /* filter: drop-shadow(0px 5px 15px rgba(0,0,0,0.5)); */
+        }
+
+        #player-hands-overlay.applying-reiki {
+             /* Scale down slightly when applying */
+            transform: translateX(-50%) scale(0.95);
+             /* Optional: add brightness or other effect */
+            /* filter: brightness(1.1) drop-shadow(0px 5px 15px rgba(0,0,0,0.5)); */
+        }
+
     </style>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
-            }
-        }
-    </script>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="blocker">
-        <div id="instructions">
-            <span style="font-size:36px">Clique para jogar</span>
-            <br /><br />
-            Movimento: WASD<br/>
-            Olhar: Mouse<br/>
-            Correr: Shift
-        </div>
+    <div id="canvas-container">
+        <canvas id="main-canvas"></canvas> <!-- Canvas for 3D scene -->
     </div>
 
-    <script type="module">
-        // Importa THREE e PointerLockControls do importmap
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    <!-- UI Elements -->
+    <div id="info-panel"></div>
+    <div id="chakra-selector"></div>
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="message-area"></div>
+    <button id="guided-mode-button">Sessão Guiada</button>
 
-        let scene, camera, renderer, controls;
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
-        let sprint = false; // Variável para corrida
-        let canJump = false; // Não implementado ainda
+    <!-- 2D Hand Overlay -->
+    <img id="player-hands-overlay"
+         src="https://i.ibb.co/S43N9jGr/Chat-GPT-Image-8-04-2025-22-04-18.png"
+         alt="Reiki Hands Overlay">
 
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
-        const playerHeight = 1.8; // Altura da câmera (jogador)
-        const movementSpeed = 4.0;
-        const sprintMultiplier = 1.8; // Quão mais rápido correr
-
-        const objects = []; // Para guardar objetos com os quais colidir (paredes, etc.)
-
-        init();
-        animate();
-
-        function init() {
-            // --- Cena ---
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Céu azul claro
-            scene.fog = new THREE.Fog(0x87ceeb, 0, 150); // Névoa
-
-            // --- Câmera ---
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.y = playerHeight;
-
-            // --- Renderer ---
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-
-            // --- Controles (Pointer Lock) ---
-            controls = new PointerLockControls(camera, renderer.domElement);
-
-            const blocker = document.getElementById('blocker');
-            const instructions = document.getElementById('instructions');
-
-            instructions.addEventListener('click', function () {
-                controls.lock();
-            }, false); // Add passive false for potential performance improvement? Check browser recommendations.
-
-            controls.addEventListener('lock', function () {
-                instructions.style.display = 'none';
-                blocker.style.display = 'none';
-            });
-
-            controls.addEventListener('unlock', function () {
-                blocker.style.display = 'flex';
-                instructions.style.display = '';
-            });
-
-            scene.add(controls.getObject());
-
-            // --- Event Listeners para Movimento ---
-            const onKeyDown = function (event) {
-                switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
-                    case 'ShiftLeft': case 'ShiftRight': sprint = true; break;
-                    // case 'Space': if (canJump === true) velocity.y += 350; canJump = false; break;
-                }
-            };
-
-            const onKeyUp = function (event) {
-                switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
-                    case 'ShiftLeft': case 'ShiftRight': sprint = false; break;
-                }
-            };
-
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-
-            // --- Luzes ---
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(50, 200, 100);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            directionalLight.shadow.camera.near = 0.5;
-            directionalLight.shadow.camera.far = 500;
-            const shadowCamSize = 50;
-             directionalLight.shadow.camera.left = -shadowCamSize;
-             directionalLight.shadow.camera.right = shadowCamSize;
-             directionalLight.shadow.camera.top = shadowCamSize;
-             directionalLight.shadow.camera.bottom = -shadowCamSize;
-            scene.add(directionalLight);
-            // scene.add(new THREE.CameraHelper(directionalLight.shadow.camera)); // Debug
-
-            // --- Chão ---
-            const floorGeometry = new THREE.PlaneGeometry(200, 200);
-            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, side: THREE.DoubleSide });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            scene.add(floor);
-            objects.push(floor);
-
-            // --- Construir o Hospital (7 salas) ---
-            createHospitalLayout();
-
-            // --- Redimensionamento da Janela ---
-            window.addEventListener('resize', onWindowResize);
+    <!-- Scripts -->
+    <!-- Include Three.js & Tone.js via CDN or local install/import map -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+        "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
+        "three/examples/jsm/controls/PointerLockControls.js": "https://unpkg.com/three@0.150.1/examples/jsm/controls/PointerLockControls.js",
+        "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.150.1/examples/jsm/loaders/GLTFLoader.js",
+        "tone": "https://unpkg.com/tone@14.7.77/build/Tone.js"
         }
-
-        function createHospitalLayout() {
-            const wallHeight = 4;
-            const wallThickness = 0.5;
-            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f0f0 });
-            const roomMaterials = [
-                new THREE.MeshStandardMaterial({ color: 0xffaaaa }), // Sala 1
-                new THREE.MeshStandardMaterial({ color: 0xaaffaa }), // Sala 2
-                new THREE.MeshStandardMaterial({ color: 0xaaaaff }), // Sala 3
-                new THREE.MeshStandardMaterial({ color: 0xffffaa }), // Sala 4
-                new THREE.MeshStandardMaterial({ color: 0xffaaff }), // Sala 5
-                new THREE.MeshStandardMaterial({ color: 0xaaffff }), // Sala 6
-                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Sala 7 (Corredor)
-            ];
-
-            function createWall(width, depth, height, x, z, rotationY = 0) {
-                const wallGeometry = new THREE.BoxGeometry(width, height, depth);
-                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                wall.position.set(x, height / 2, z);
-                wall.rotation.y = rotationY;
-                wall.castShadow = true;
-                wall.receiveShadow = true;
-                scene.add(wall);
-                objects.push(wall);
-                return wall;
-            }
-
-            function createRoomFloor(width, depth, x, z, material) {
-                const floorGeom = new THREE.PlaneGeometry(width, depth);
-                const roomFloor = new THREE.Mesh(floorGeom, material);
-                roomFloor.rotation.x = -Math.PI / 2;
-                roomFloor.position.set(x, 0.01, z);
-                roomFloor.receiveShadow = true;
-                scene.add(roomFloor);
-            }
-
-            const roomSize = 10;
-            const corridorWidth = 4;
-            const corridorLength = roomSize * 3 + wallThickness * 2;
-            const doorWidth = 1.5;
-            const wallSegmentWidth = (roomSize - doorWidth) / 2;
-
-             // --- Corredor Central (Sala 7) ---
-            createRoomFloor(corridorWidth, corridorLength, 0, 0, roomMaterials[6]);
-            createWall(wallThickness, corridorLength, wallHeight, -corridorWidth / 2 - wallThickness / 2, 0); // Esquerda
-            createWall(wallThickness, corridorLength, wallHeight, corridorWidth / 2 + wallThickness / 2, 0); // Direita
-             // Parede Fundo (com abertura)
-            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, -(corridorWidth / 4 + doorWidth / 4), -corridorLength / 2 - wallThickness / 2); // Frente Esq
-            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, (corridorWidth / 4 + doorWidth / 4), -corridorLength / 2 - wallThickness / 2); // Frente Dir
-             // Parede Frente (com abertura)
-            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, -(corridorWidth / 4 + doorWidth / 4), corridorLength / 2 + wallThickness / 2); // Fundo Esq
-            createWall(corridorWidth / 2 - doorWidth / 2, wallThickness, wallHeight, (corridorWidth / 4 + doorWidth / 4), corridorLength / 2 + wallThickness / 2); // Fundo Dir
-
-
-            // --- Salas Laterais e Fundo ---
-            for (let i = 0; i < 3; i++) { // Salas 1, 2, 3 (Esquerda) e 4, 5, 6 (Direita)
-                const roomZ = -corridorLength / 2 + roomSize / 2 + i * (roomSize + wallThickness);
-                const roomX_Left = -corridorWidth / 2 - wallThickness - roomSize / 2;
-                const roomX_Right = corridorWidth / 2 + wallThickness + roomSize / 2;
-
-                // --- Salas à Esquerda (1, 2, 3) ---
-                createRoomFloor(roomSize, roomSize, roomX_Left, roomZ, roomMaterials[i]);
-                createWall(wallThickness, roomSize, wallHeight, roomX_Left - roomSize/2 - wallThickness/2, roomZ); // Externa
-                 // Paredes Frontal/Traseira da Sala
-                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Left, roomZ - roomSize / 2 - wallThickness / 2); // Frente (para corredor)
-                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Left, roomZ + roomSize / 2 + wallThickness / 2); // Fundo
-
-                 // Paredes da porta (na parede do corredor)
-                createWall(wallThickness, wallSegmentWidth, wallHeight, -corridorWidth / 2 - wallThickness / 2, roomZ - (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 1
-                createWall(wallThickness, wallSegmentWidth, wallHeight, -corridorWidth / 2 - wallThickness / 2, roomZ + (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 2
-
-                // --- Salas à Direita (4, 5, 6) ---
-                createRoomFloor(roomSize, roomSize, roomX_Right, roomZ, roomMaterials[i + 3]);
-                createWall(wallThickness, roomSize, wallHeight, roomX_Right + roomSize/2 + wallThickness/2, roomZ); // Externa
-                 // Paredes Frontal/Traseira da Sala
-                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Right, roomZ - roomSize / 2 - wallThickness / 2); // Frente (para corredor)
-                createWall(roomSize + wallThickness, wallThickness, wallHeight, roomX_Right, roomZ + roomSize / 2 + wallThickness / 2); // Fundo
-
-                // Paredes da porta (na parede do corredor)
-                createWall(wallThickness, wallSegmentWidth, wallHeight, corridorWidth / 2 + wallThickness / 2, roomZ - (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 1
-                createWall(wallThickness, wallSegmentWidth, wallHeight, corridorWidth / 2 + wallThickness / 2, roomZ + (doorWidth / 2 + wallSegmentWidth / 2)); // Segmento 2
-
-                 // Paredes divisórias entre salas (exceto a primeira de cada lado)
-                 if (i > 0) {
-                    const prevRoomZ = -corridorLength / 2 + roomSize / 2 + (i-1) * (roomSize + wallThickness);
-                    const dividerZ = roomZ - roomSize/2 - wallThickness/2; // Posição Z da parede divisória
-                    createWall(roomSize, wallThickness, wallHeight, roomX_Left, dividerZ); // Divisória esquerda
-                    createWall(roomSize, wallThickness, wallHeight, roomX_Right, dividerZ); // Divisória direita
-                 }
-            }
-
-             // --- Sala do Fundo (Sala 4 redefinida aqui como exemplo, ID 3 no array material[3]) ---
-            // Esta sala fica no final do eixo Z positivo do corredor
-            const room4_Z = corridorLength/2 + wallThickness + roomSize/2;
-            createRoomFloor(roomSize, roomSize, 0, room4_Z, roomMaterials[3]); // Usando material[3] (amarelo)
-            // Parede externa (fundo)
-            createWall(roomSize + wallThickness*2, wallThickness, wallHeight, 0, room4_Z + roomSize/2 + wallThickness/2);
-            // Paredes laterais
-            createWall(wallThickness, roomSize + wallThickness, wallHeight, -roomSize/2 - wallThickness/2, room4_Z); // Ajustado depth
-            createWall(wallThickness, roomSize + wallThickness, wallHeight, roomSize/2 + wallThickness/2, room4_Z); // Ajustado depth
-             // Paredes da porta (conectando ao corredor) - já feitas acima
-
-            // --- Teto ---
-            const ceilingGeometry = new THREE.PlaneGeometry(corridorWidth + 2*roomSize + 4*wallThickness, corridorLength + roomSize + 2*wallThickness);
-            const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, side: THREE.DoubleSide });
-            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-            ceiling.position.y = wallHeight;
-            ceiling.rotation.x = Math.PI / 2;
-            scene.add(ceiling);
-
-            // Adicionar objetos simples
-            const boxGeometry = new THREE.BoxGeometry(1, 0.5, 2);
-            const boxMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-
-            const bed1 = new THREE.Mesh(boxGeometry, boxMaterial);
-            bed1.position.set(-corridorWidth / 2 - wallThickness - roomSize / 2, 0.25, -corridorLength / 2 + roomSize / 2); // Sala 1
-            bed1.castShadow = true; bed1.receiveShadow = true;
-            scene.add(bed1); objects.push(bed1);
-
-            const bed2 = new THREE.Mesh(boxGeometry, boxMaterial);
-            bed2.position.set(corridorWidth / 2 + wallThickness + roomSize / 2, 0.25, -corridorLength / 2 + roomSize / 2); // Sala 4 (direita)
-            bed2.castShadow = true; bed2.receiveShadow = true;
-            scene.add(bed2); objects.push(bed2);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        let prevTime = performance.now();
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const time = performance.now();
-            const delta = (time - prevTime) / 1000;
-
-            if (controls.isLocked === true) {
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                // velocity.y -= 9.8 * 100.0 * delta; // Gravidade
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
-
-                const currentSpeed = sprint ? movementSpeed * sprintMultiplier : movementSpeed;
-
-                if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta * 10;
-                if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta * 10;
-
-                // --- Salvar posição anterior para possível reversão em colisão ---
-                const oldPosition = controls.getObject().position.clone();
-
-                controls.moveRight(-velocity.x * delta);
-                controls.moveForward(-velocity.z * delta);
-                // controls.getObject().position.y += (velocity.y * delta);
-
-                // --- Detecção de Colisão MUITO Básica (Exemplo - pode precisar de ajustes) ---
-                const playerBox = new THREE.Box3().setFromCenterAndSize(
-                    controls.getObject().position,
-                    new THREE.Vector3(0.5, playerHeight, 0.5) // Caixa delimitadora do jogador (ajustar tamanho)
-                );
-
-                let collision = false;
-                for (let i = 0; i < objects.length; i++) {
-                    if (objects[i] !== floor && objects[i].geometry) { // Ignora o chão principal
-                         // É mais seguro usar uma BoundingBox do objeto, se disponível
-                         // Aqui estamos criando uma na hora, o que pode ser ineficiente
-                         const objBox = new THREE.Box3().setFromObject(objects[i]);
-                        if (playerBox.intersectsBox(objBox)) {
-                            collision = true;
-                            break; // Sai do loop se colidiu com um objeto
-                        }
-                    }
-                }
-
-                if (collision) {
-                    // Se houve colisão, reverte para a posição anterior
-                    controls.getObject().position.copy(oldPosition);
-                     // Zera velocidade para evitar ficar "preso"
-                     velocity.x = 0;
-                     velocity.z = 0;
-                } else {
-                     // Se não colidiu, apenas garante que o jogador não afunde/flutue
-                     controls.getObject().position.y = playerHeight;
-                }
-
-
-                // if (controls.getObject().position.y < playerHeight) { // Simples "colisão" com chão
-                //     velocity.y = 0;
-                //     controls.getObject().position.y = playerHeight;
-                //     canJump = true; // Pode pular se estiver no chão
-                // }
-            }
-
-            prevTime = time;
-            renderer.render(scene, camera);
-        }
+    }
     </script>
-
-</body>
-</html>
